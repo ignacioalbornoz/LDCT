@@ -9,38 +9,38 @@ from diffusers import DDPMPipeline, DDIMPipeline
 class TrainingConfig:
 	seed = 42
 	
-	image_size = 256  # the generated image resolution
+	image_size = 128  # Reduced from 256 to save memory
 	
-	train_batch_size = 16
-	eval_batch_size = 4#16  # how many images to sample during evaluation
+	train_batch_size = 8  # Reduced from 16 to save memory
+	eval_batch_size = 4
 	
-	num_epochs = 500
-	num_train_timesteps = 1000
-	num_inference_steps = 1000
+	num_epochs = 10  # Reduced for quick testing
+	num_train_timesteps = 200  # Reduced from 1000 for faster training
+	num_inference_steps = 200  # Match with train timesteps
 	
-	model_name = "DDPM_Concat"
-	scheduler = DDPMScheduler#EDMEulerScheduler
-	pipeline = DDPMPipeline #DDPM as Default for most schedulers
+	model_name = "DDPM_Sketches_Test"
+	scheduler = DDPMScheduler
+	pipeline = DDPMPipeline
 	
-	conditioning = "concatenate" #"concatenate", None, "dual"
+	conditioning = None  # No conditioning for sketch generation
 	
 	slices = 1
-	channels = 1
+	channels = 1  # Grayscale images
 	
 	learning_rate = 1e-4
-	lr_warmup_steps = 500
+	lr_warmup_steps = 100  # Reduced to match shorter training
 	
-	save_image_epochs = 1 #10
-	save_model_epochs = 1 #30
+	save_image_epochs = 1  # Save images every epoch to monitor progress
+	save_model_epochs = 1
 	
-	mixed_precision = "no" #"fp16"  # `no` for float32, `fp16` for automatic mixed precision
+	mixed_precision = "no"  # `no` for float32, `fp16` for automatic mixed precision
 	
-	gradient_accumulation_steps = 1
+	gradient_accumulation_steps = 2  # Increased to compensate for smaller batch size
 	
-	push_to_hub = False  # whether to upload the saved model to the HF Hub
+	push_to_hub = False
 	hub_private_repo = False
-	overwrite_output_dir = False  # overwrite the old model when re-running the notebook
+	overwrite_output_dir = False
 	
-	output_dir = f"train/{model_name.lower()}-{mixed_precision}-{image_size}-{slices}-{seed}-{time.strftime('%Y-%d-%m-%H:%M', time.localtime(time.time()))}"  # the model name locally and on the HF Hub
-	
+	output_dir = f"train/{model_name.lower()}-{mixed_precision}-{image_size}-{slices}-{seed}-{time.strftime('%Y-%d-%m-%H:%M', time.localtime(time.time()))}"
+
 config = TrainingConfig()
