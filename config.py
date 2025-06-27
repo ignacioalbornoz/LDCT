@@ -14,9 +14,9 @@ class TrainingConfig:
 	train_batch_size = 8  # Reduced from 16 to save memory
 	eval_batch_size = 4
 	
-	num_epochs = 10  # Reduced for quick testing
-	num_train_timesteps = 200  # Reduced from 1000 for faster training
-	num_inference_steps = 200  # Match with train timesteps
+	num_epochs = 100  # Increased from 10 for better training
+	num_train_timesteps = 1000  # Increased from 200 for better quality
+	num_inference_steps = 1000  # Match with train timesteps
 	
 	model_name = "DDPM_Sketches_Test"
 	scheduler = DDPMScheduler
