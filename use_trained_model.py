@@ -113,7 +113,10 @@ def generate_sketches(model_path, num_images=4, output_dir="generated_sketches",
         # Obtener el nombre base de la imagen original (sin extensión)
         if starting_image:
             base_name = os.path.splitext(os.path.basename(starting_image))[0]
-            filename = f"sketch_{base_name}.png"
+            if num_images > 1:
+                filename = f"sketch_{base_name}_{i+1:02d}.png"
+            else:
+                filename = f"sketch_{base_name}.png"
         else:
             filename = f"sketch_{i:04d}.png"
         
@@ -123,7 +126,10 @@ def generate_sketches(model_path, num_images=4, output_dir="generated_sketches",
     
     print(f"Se han generado {num_images} imágenes en el directorio: {output_dir}")
     if starting_image:
-        print(f"Imágenes guardadas como: {output_dir}/sketch_[nombre_original].png")
+        if num_images > 1:
+            print(f"Imágenes guardadas como: {output_dir}/sketch_[nombre_original]_XX.png")
+        else:
+            print(f"Imágenes guardadas como: {output_dir}/sketch_[nombre_original].png")
     else:
         print(f"Imágenes guardadas como: {output_dir}/sketch_XXXX.png")
 
