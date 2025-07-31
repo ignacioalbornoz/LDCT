@@ -1,225 +1,26 @@
-import torch
-import data as Data
-import model as Model
+#!/usr/bin/env python3
 import argparse
 import logging
-import core.logger as Logger
-import core.metrics as Metrics
-from core.wandb_logger import WandbLogger
-from tensorboardX import SummaryWriter
 import os
 import numpy as np
-import logging
-import matplotlib.pyplot as plt
-import wandb
-import pandas as pd
-from scipy import ndimage
+import torch
+from torch.utils.tensorboard import SummaryWriter
 
-class ConvergenceMonitor:
-    def __init__(self, log_dir):
-        self.log_dir = log_dir
-        self.losses = []
-        self.gradients = []
-        self.learning_rates = []
-        self.psnr_values = []
-        self.ssim_values = []
-        self.image_quality = []
-        
-        # Early stopping
-        self.best_psnr = 0
-        self.best_step = 0
-        self.patience = 1000  # steps without improvement (mucho más paciente)
-        self.patience_counter = 0
-        
-        # Crear directorio para logs
-        os.makedirs(log_dir, exist_ok=True)
-        
-    def log_loss(self, loss, step):
-        self.losses.append((step, loss))
-        
-    def log_gradients(self, model, step):
-        total_norm = 0
-        param_count = 0
-        for p in model.parameters():
-            if p.grad is not None:
-                param_norm = p.grad.data.norm(2)
-                total_norm += param_norm.item() ** 2
-                param_count += p.numel()
-        total_norm = total_norm ** (1. / 2)
-        self.gradients.append((step, total_norm))
-        
-    def log_lr(self, lr, step):
-        self.learning_rates.append((step, lr))
-        
-    def log_metrics(self, psnr, ssim, step):
-        self.psnr_values.append((step, psnr))
-        self.ssim_values.append((step, ssim))
-        
-        # Early stopping check
-        if psnr > self.best_psnr:
-            self.best_psnr = psnr
-            self.best_step = step
-            self.patience_counter = 0
-        else:
-            self.patience_counter += 1
-            
-    def should_stop(self):
-        return self.patience_counter >= self.patience
-        
-    def log_image_quality(self, sr_img, hr_img, step):
-        # Calcular métricas de calidad de imagen
-        binary_accuracy = np.mean((sr_img > 0.5) == (hr_img > 0.5))
-        edge_consistency = self.calculate_edge_consistency(sr_img, hr_img)
-        self.image_quality.append((step, binary_accuracy, edge_consistency))
-        
-    def calculate_edge_consistency(self, sr_img, hr_img):
-        # Calcular consistencia de edges usando detección de bordes
-        sr_edges = ndimage.sobel(sr_img)
-        hr_edges = ndimage.sobel(hr_img)
-        return np.corrcoef(sr_edges.flatten(), hr_edges.flatten())[0, 1]
-        
-    def save_plots(self):
-        # Guardar gráficos de convergencia
-        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-        
-        # Loss
-        if self.losses:
-            steps, losses = zip(*self.losses)
-            axes[0, 0].plot(steps, losses)
-            axes[0, 0].set_title('Training Loss')
-            axes[0, 0].set_ylabel('Loss')
-            
-        # Gradients
-        if self.gradients:
-            steps, grads = zip(*self.gradients)
-            axes[0, 1].plot(steps, grads)
-            axes[0, 1].set_title('Gradient Norm')
-            axes[0, 1].set_ylabel('Gradient Norm')
-            
-        # Learning Rate
-        if self.learning_rates:
-            steps, lrs = zip(*self.learning_rates)
-            axes[0, 2].plot(steps, lrs)
-            axes[0, 2].set_title('Learning Rate')
-            axes[0, 2].set_ylabel('LR')
-            
-        # PSNR
-        if self.psnr_values:
-            steps, psnr = zip(*self.psnr_values)
-            axes[1, 0].plot(steps, psnr)
-            axes[1, 0].set_title('PSNR')
-            axes[1, 0].set_ylabel('PSNR')
-            
-        # SSIM
-        if self.ssim_values:
-            steps, ssim = zip(*self.ssim_values)
-            axes[1, 1].plot(steps, ssim)
-            axes[1, 1].set_title('SSIM')
-            axes[1, 1].set_ylabel('SSIM')
-            
-        # Binary Accuracy
-        if self.image_quality:
-            steps, acc, _ = zip(*self.image_quality)
-            axes[1, 2].plot(steps, acc)
-            axes[1, 2].set_title('Binary Accuracy')
-            axes[1, 2].set_ylabel('Accuracy')
-            
-        plt.tight_layout()
-        plt.savefig(os.path.join(self.log_dir, 'convergence_plots.png'))
-        plt.close()
-        
-    def save_logs(self):
-        # Guardar logs en formato CSV
-        data = {
-            'step': [],
-            'loss': [],
-            'gradient_norm': [],
-            'learning_rate': [],
-            'psnr': [],
-            'ssim': [],
-            'binary_accuracy': [],
-            'edge_consistency': []
-        }
-        
-        # Agregar datos
-        for step, loss in self.losses:
-            data['step'].append(step)
-            data['loss'].append(loss)
-            
-        for step, grad in self.gradients:
-            if step in data['step']:
-                idx = data['step'].index(step)
-                data['gradient_norm'].append(grad)
-            else:
-                data['step'].append(step)
-                data['loss'].append(None)
-                data['gradient_norm'].append(grad)
-                
-        for step, lr in self.learning_rates:
-            if step in data['step']:
-                idx = data['step'].index(step)
-                data['learning_rate'].append(lr)
-            else:
-                data['step'].append(step)
-                data['loss'].append(None)
-                data['gradient_norm'].append(None)
-                data['learning_rate'].append(lr)
-                
-        for step, psnr in self.psnr_values:
-            if step in data['step']:
-                idx = data['step'].index(step)
-                data['psnr'].append(psnr)
-            else:
-                data['step'].append(step)
-                data['loss'].append(None)
-                data['gradient_norm'].append(None)
-                data['learning_rate'].append(None)
-                data['psnr'].append(psnr)
-                
-        for step, ssim in self.ssim_values:
-            if step in data['step']:
-                idx = data['step'].index(step)
-                data['ssim'].append(ssim)
-            else:
-                data['step'].append(step)
-                data['loss'].append(None)
-                data['gradient_norm'].append(None)
-                data['learning_rate'].append(None)
-                data['psnr'].append(None)
-                data['ssim'].append(ssim)
-                
-        for step, acc, edge in self.image_quality:
-            if step in data['step']:
-                idx = data['step'].index(step)
-                data['binary_accuracy'].append(acc)
-                data['edge_consistency'].append(edge)
-            else:
-                data['step'].append(step)
-                data['loss'].append(None)
-                data['gradient_norm'].append(None)
-                data['learning_rate'].append(None)
-                data['psnr'].append(None)
-                data['ssim'].append(None)
-                data['binary_accuracy'].append(acc)
-                data['edge_consistency'].append(edge)
-        
-        # Rellenar valores faltantes
-        max_len = len(data['step'])
-        for key in data:
-            while len(data[key]) < max_len:
-                data[key].append(None)
-        
-        df = pd.DataFrame(data)
-        df.to_csv(os.path.join(self.log_dir, 'training_logs.csv'), index=False)
+import options.options as option
+from utils import util
+from data import create_dataset, create_dataloader
+from models import create_model
+from utils.logger import Logger
+from utils.wandb_logger import WandbLogger
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str, default='config/sketchy_binary_optimized.json',
+    parser.add_argument('-c', '--config', type=str, default='config/sketchy_edges2sketch_same_res.json',
                         help='JSON file for configuration')
     parser.add_argument('-p', '--phase', type=str, choices=['train', 'val'],
                         help='Run either train(training) or val(generation)', default='train')
     parser.add_argument('-gpu', '--gpu_ids', type=str, default=None)
-    parser.add_argument('--debug', '-d', action='store_true')
+    parser.add_argument('-debug', '-d', action='store_true')
     parser.add_argument('-enable_wandb', action='store_true')
     parser.add_argument('-log_wandb_ckpt', action='store_true')
     parser.add_argument('-log_eval', action='store_true')
@@ -240,9 +41,6 @@ if __name__ == "__main__":
     logger = logging.getLogger('base')
     logger.info(Logger.dict2str(opt))
     tb_logger = SummaryWriter(log_dir=opt['path']['tb_logger'])
-    
-    # Initialize convergence monitor
-    monitor = ConvergenceMonitor(opt['path']['log'])
     
     # Setup debug logger for image shape debugging
     debug_logger = logging.getLogger('debug')
@@ -268,30 +66,18 @@ if __name__ == "__main__":
     # dataset
     for phase, dataset_opt in opt['datasets'].items():
         if phase == 'train' and args.phase != 'val':
-            train_set = Data.create_dataset(dataset_opt, phase)
-            train_loader = Data.create_dataloader(
+            train_set = create_dataset(dataset_opt, phase)
+            train_loader = create_dataloader(
                 train_set, dataset_opt, phase)
         elif phase == 'val':
-            val_set = Data.create_dataset(dataset_opt, phase)
-            val_loader = Data.create_dataloader(
+            val_set = create_dataset(dataset_opt, phase)
+            val_loader = create_dataloader(
                 val_set, dataset_opt, phase)
     logger.info('Initial Dataset Finished')
 
     # model
-    diffusion = Model.create_model(opt)
+    diffusion = create_model(opt)
     logger.info('Initial Model Finished')
-    
-    # Initialize optimizer and scheduler
-    optimizer = diffusion.optG
-    if 'scheduler' in opt['train'] and opt['train']['scheduler']['type'] == 'cosine':
-        from torch.optim.lr_scheduler import CosineAnnealingLR
-        scheduler = CosineAnnealingLR(
-            optimizer, 
-            T_max=opt['train']['n_iter'],
-            eta_min=1e-6
-        )
-    else:
-        scheduler = None
 
     # Train
     current_step = diffusion.begin_step
@@ -313,32 +99,6 @@ if __name__ == "__main__":
                     break
                 diffusion.feed_data(train_data)
                 diffusion.optimize_parameters()
-                
-                # Gradient clipping
-                if opt['train'].get('gradient_clip', 0) > 0:
-                    torch.nn.utils.clip_grad_norm_(diffusion.netG.parameters(), opt['train']['gradient_clip'])
-                
-                # Log loss and gradients for convergence monitoring
-                logs = diffusion.get_current_log()
-                if 'l_pix' in logs:
-                    monitor.log_loss(logs['l_pix'], current_step)
-                monitor.log_gradients(diffusion.netG, current_step)
-                
-                # Update learning rate scheduler
-                if scheduler is not None:
-                    scheduler.step()
-                
-                # Debug: Log detailed information
-                if args.debug and current_step % 10 == 0:
-                    logger.info(f'=== DEBUG STEP {current_step} ===')
-                    logger.info(f'Loss: {logs.get("l_pix", "N/A")}')
-                    logger.info(f'LR: {optimizer.param_groups[0]["lr"]:.6f}')
-                    
-                    # Log data statistics
-                    for key, value in train_data.items():
-                        if isinstance(value, torch.Tensor):
-                            logger.info(f'{key} - Shape: {value.shape}, Min: {value.min():.4f}, Max: {value.max():.4f}, Mean: {value.mean():.4f}')
-                
                 # log
                 if current_step % opt['train']['print_freq'] == 0:
                     logs = diffusion.get_current_log()
@@ -365,43 +125,28 @@ if __name__ == "__main__":
                     for _,  val_data in enumerate(val_loader):
                         idx += 1
                         diffusion.feed_data(val_data)
-                        diffusion.test(continous=False)
+                        diffusion.test(continous=True)
                         visuals = diffusion.get_current_visuals()
-                        sr_img = Metrics.tensor2img(visuals['SR'][-1])  # uint8 - Solo el último elemento del batch
-                        hr_img = Metrics.tensor2img(visuals['HR'][-1])  # uint8 - Solo el último elemento del batch
-                        lr_img = Metrics.tensor2img(visuals['LR'][-1])  # uint8 - Solo el último elemento del batch
-                        fake_img = Metrics.tensor2img(visuals['INF'][-1])  # uint8 - Solo el último elemento del batch
 
-                        # Calculate metrics
-                        psnr = Metrics.calculate_psnr(sr_img, hr_img)
-                        ssim = Metrics.calculate_ssim(sr_img, hr_img)
-                        
-                        # Log metrics for convergence monitoring
-                        monitor.log_metrics(psnr, ssim, current_step)
-                        monitor.log_image_quality(sr_img, hr_img, current_step)
-                        
-                        # Early stopping check
-                        if monitor.should_stop():
-                            logger.info(f'Early stopping triggered! No improvement for {monitor.patience} steps.')
-                            logger.info(f'Best PSNR: {monitor.best_psnr:.4f} at step {monitor.best_step}')
-                            break
-                        
+                        hr_img = util.tensor2img(visuals['HR'])  # uint8
+                        lr_img = util.tensor2img(visuals['LR'])  # uint8
+                        fake_img = util.tensor2img(visuals['INF'])  # uint8
+
                         # generation
-                        Metrics.save_img(
+                        util.save_img(
                             hr_img, '{}/{}_{}_hr.png'.format(result_path, current_step, idx))
-                        Metrics.save_img(
-                            sr_img, '{}/{}_{}_sr.png'.format(result_path, current_step, idx))
-                        Metrics.save_img(
+                        util.save_img(
                             lr_img, '{}/{}_{}_lr.png'.format(result_path, current_step, idx))
-                        Metrics.save_img(
+                        util.save_img(
                             fake_img, '{}/{}_{}_inf.png'.format(result_path, current_step, idx))
+                        
                         # Use only the final generated image, not the grid
                         debug_logger.debug("=== BEFORE CONVERSION ===")
                         debug_logger.debug(f"visuals['SR'] type: {type(visuals['SR'])}")
                         debug_logger.debug(f"visuals['SR'] shape: {visuals['SR'].shape}")
                         debug_logger.debug(f"visuals['SR'][-1] shape: {visuals['SR'][-1].shape}")
                         
-                        sr_img_final = Metrics.tensor2img(visuals['SR'][-1])  # uint8
+                        sr_img_final = util.tensor2img(visuals['SR'][-1])  # uint8
                         
                         debug_logger.debug("=== AFTER CONVERSION ===")
                         debug_logger.debug(f"sr_img_final shape: {sr_img_final.shape}")
@@ -474,7 +219,7 @@ if __name__ == "__main__":
                             np.transpose(np.concatenate(
                                 (fake_img, sr_img_final, hr_img), axis=1), [2, 0, 1]),
                             idx)
-                        avg_psnr += Metrics.calculate_psnr(
+                        avg_psnr += util.calculate_psnr(
                             sr_img_final, hr_img)
 
                         if wandb_logger:
@@ -504,10 +249,6 @@ if __name__ == "__main__":
                 if current_step % opt['train']['save_checkpoint_freq'] == 0:
                     logger.info('Saving models and training states.')
                     diffusion.save_network(current_epoch, current_step)
-                    
-                    # Save convergence plots and logs
-                    monitor.save_plots()
-                    monitor.save_logs()
 
                     if wandb_logger and opt['log_wandb_ckpt']:
                         wandb_logger.log_checkpoint(current_epoch, current_step)
@@ -517,10 +258,6 @@ if __name__ == "__main__":
 
         # save model
         logger.info('End of training.')
-        
-        # Final save of convergence data
-        monitor.save_plots()
-        monitor.save_logs()
     else:
         logger.info('Begin Model Evaluation.')
         avg_psnr = 0.0
@@ -534,17 +271,11 @@ if __name__ == "__main__":
             diffusion.test(continous=True)
             visuals = diffusion.get_current_visuals()
 
-            debug_logger.debug("=== BEFORE TENSOR2IMG ===")
-            debug_logger.debug(f"visuals['HR'] type: {type(visuals['HR'])}")
-            debug_logger.debug(f"visuals['HR'] shape: {visuals['HR'].shape}")
-            debug_logger.debug(f"visuals['HR'] dtype: {visuals['HR'].dtype}")
-            debug_logger.debug(f"visuals['HR'] min/max: {visuals['HR'].min()}/{visuals['HR'].max()}")
+            hr_img = util.tensor2img(visuals['HR'])  # uint8
+            lr_img = util.tensor2img(visuals['LR'])  # uint8
+            fake_img = util.tensor2img(visuals['INF'])  # uint8
             
-            hr_img = Metrics.tensor2img(visuals['HR'][-1])  # uint8 - Solo el último elemento del batch
-            lr_img = Metrics.tensor2img(visuals['LR'][-1])  # uint8 - Solo el último elemento del batch
-            fake_img = Metrics.tensor2img(visuals['INF'][-1])  # uint8 - Solo el último elemento del batch
-            
-            debug_logger.debug("=== AFTER TENSOR2IMG ===")
+            debug_logger.debug("=== OTHER IMAGES ===")
             debug_logger.debug(f"hr_img shape: {hr_img.shape}, dtype: {hr_img.dtype}")
             debug_logger.debug(f"lr_img shape: {lr_img.shape}, dtype: {lr_img.dtype}")
             debug_logger.debug(f"fake_img shape: {fake_img.shape}, dtype: {fake_img.dtype}")
@@ -555,32 +286,32 @@ if __name__ == "__main__":
                 sr_img = visuals['SR']  # uint8
                 sample_num = sr_img.shape[0]
                 for iter in range(0, sample_num):
-                    Metrics.save_img(
-                        Metrics.tensor2img(sr_img[iter]), '{}/{}_{}_sr_{}.png'.format(result_path, current_step, idx, iter))
+                    util.save_img(
+                        util.tensor2img(sr_img[iter]), '{}/{}_{}_sr_{}.png'.format(result_path, current_step, idx, iter))
             else:
                 # grid img
-                sr_img = Metrics.tensor2img(visuals['SR'][-1])  # uint8 - Solo el último elemento del batch
-                Metrics.save_img(
+                sr_img = util.tensor2img(visuals['SR'])  # uint8
+                util.save_img(
                     sr_img, '{}/{}_{}_sr_process.png'.format(result_path, current_step, idx))
-                Metrics.save_img(
-                    Metrics.tensor2img(visuals['SR'][-1]), '{}/{}_{}_sr.png'.format(result_path, current_step, idx))
+                util.save_img(
+                    util.tensor2img(visuals['SR'][-1]), '{}/{}_{}_sr.png'.format(result_path, current_step, idx))
 
-            Metrics.save_img(
+            util.save_img(
                 hr_img, '{}/{}_{}_hr.png'.format(result_path, current_step, idx))
-            Metrics.save_img(
+            util.save_img(
                 lr_img, '{}/{}_{}_lr.png'.format(result_path, current_step, idx))
-            Metrics.save_img(
+            util.save_img(
                 fake_img, '{}/{}_{}_inf.png'.format(result_path, current_step, idx))
 
             # generation
-            eval_psnr = Metrics.calculate_psnr(Metrics.tensor2img(visuals['SR'][-1]), hr_img)
-            eval_ssim = Metrics.calculate_ssim(Metrics.tensor2img(visuals['SR'][-1]), hr_img)
+            eval_psnr = util.calculate_psnr(util.tensor2img(visuals['SR'][-1]), hr_img)
+            eval_ssim = util.calculate_ssim(util.tensor2img(visuals['SR'][-1]), hr_img)
 
             avg_psnr += eval_psnr
             avg_ssim += eval_ssim
 
             if wandb_logger and opt['log_eval']:
-                wandb_logger.log_eval_data(fake_img, Metrics.tensor2img(visuals['SR'][-1]), hr_img, eval_psnr, eval_ssim)
+                wandb_logger.log_eval_data(fake_img, util.tensor2img(visuals['SR'][-1]), hr_img, eval_psnr, eval_ssim)
 
         avg_psnr = avg_psnr / idx
         avg_ssim = avg_ssim / idx
@@ -598,4 +329,4 @@ if __name__ == "__main__":
             wandb_logger.log_metrics({
                 'PSNR': float(avg_psnr),
                 'SSIM': float(avg_ssim)
-            })
+            }) 

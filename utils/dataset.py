@@ -8,7 +8,7 @@ import numpy as np
 from skimage.transform import resize
 from torch.utils.data import Dataset
 
-from .utils import n_slice_split, lot_id, load
+from utils import n_slice_split, lot_id, load
 
 '''
 Class DefaultDataset:
