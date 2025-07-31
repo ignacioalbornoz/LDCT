@@ -64,6 +64,10 @@ class ConvergenceMonitor:
             self.patience_counter += 1
             
     def should_stop(self):
+        # Solo activar early stopping después de al menos 1000 pasos
+        min_steps = 1000
+        if len(self.losses) < min_steps:
+            return False
         return self.patience_counter >= self.patience
         
     def log_image_quality(self, sr_img, hr_img, step):
@@ -129,88 +133,61 @@ class ConvergenceMonitor:
         plt.close()
         
     def save_logs(self):
-        # Guardar logs en formato CSV
-        data = {
-            'step': [],
-            'loss': [],
-            'gradient_norm': [],
-            'learning_rate': [],
-            'psnr': [],
-            'ssim': [],
-            'binary_accuracy': [],
-            'edge_consistency': []
-        }
-        
-        # Agregar datos
-        for step, loss in self.losses:
-            data['step'].append(step)
-            data['loss'].append(loss)
+        # Guardar logs en formato CSV de manera más simple
+        try:
+            # Crear un DataFrame más simple
+            all_steps = set()
             
-        for step, grad in self.gradients:
-            if step in data['step']:
-                idx = data['step'].index(step)
-                data['gradient_norm'].append(grad)
-            else:
-                data['step'].append(step)
-                data['loss'].append(None)
-                data['gradient_norm'].append(grad)
-                
-        for step, lr in self.learning_rates:
-            if step in data['step']:
-                idx = data['step'].index(step)
-                data['learning_rate'].append(lr)
-            else:
-                data['step'].append(step)
-                data['loss'].append(None)
-                data['gradient_norm'].append(None)
-                data['learning_rate'].append(lr)
-                
-        for step, psnr in self.psnr_values:
-            if step in data['step']:
-                idx = data['step'].index(step)
-                data['psnr'].append(psnr)
-            else:
-                data['step'].append(step)
-                data['loss'].append(None)
-                data['gradient_norm'].append(None)
-                data['learning_rate'].append(None)
-                data['psnr'].append(psnr)
-                
-        for step, ssim in self.ssim_values:
-            if step in data['step']:
-                idx = data['step'].index(step)
-                data['ssim'].append(ssim)
-            else:
-                data['step'].append(step)
-                data['loss'].append(None)
-                data['gradient_norm'].append(None)
-                data['learning_rate'].append(None)
-                data['psnr'].append(None)
-                data['ssim'].append(ssim)
-                
-        for step, acc, edge in self.image_quality:
-            if step in data['step']:
-                idx = data['step'].index(step)
-                data['binary_accuracy'].append(acc)
-                data['edge_consistency'].append(edge)
-            else:
-                data['step'].append(step)
-                data['loss'].append(None)
-                data['gradient_norm'].append(None)
-                data['learning_rate'].append(None)
-                data['psnr'].append(None)
-                data['ssim'].append(None)
-                data['binary_accuracy'].append(acc)
-                data['edge_consistency'].append(edge)
-        
-        # Rellenar valores faltantes
-        max_len = len(data['step'])
-        for key in data:
-            while len(data[key]) < max_len:
-                data[key].append(None)
-        
-        df = pd.DataFrame(data)
-        df.to_csv(os.path.join(self.log_dir, 'training_logs.csv'), index=False)
+            # Recolectar todos los steps
+            for step, _ in self.losses:
+                all_steps.add(step)
+            for step, _ in self.gradients:
+                all_steps.add(step)
+            for step, _ in self.learning_rates:
+                all_steps.add(step)
+            for step, _ in self.psnr_values:
+                all_steps.add(step)
+            for step, _ in self.ssim_values:
+                all_steps.add(step)
+            for step, _, _ in self.image_quality:
+                all_steps.add(step)
+            
+            all_steps = sorted(list(all_steps))
+            
+            # Crear diccionarios para mapear step -> valor
+            loss_dict = dict(self.losses)
+            grad_dict = dict(self.gradients)
+            lr_dict = dict(self.learning_rates)
+            psnr_dict = dict(self.psnr_values)
+            ssim_dict = dict(self.ssim_values)
+            quality_dict = {step: (acc, edge) for step, acc, edge in self.image_quality}
+            
+            # Crear DataFrame
+            data = []
+            for step in all_steps:
+                row = {
+                    'step': step,
+                    'loss': loss_dict.get(step),
+                    'gradient_norm': grad_dict.get(step),
+                    'learning_rate': lr_dict.get(step),
+                    'psnr': psnr_dict.get(step),
+                    'ssim': ssim_dict.get(step),
+                    'binary_accuracy': quality_dict.get(step, (None, None))[0] if step in quality_dict else None,
+                    'edge_consistency': quality_dict.get(step, (None, None))[1] if step in quality_dict else None
+                }
+                data.append(row)
+            
+            df = pd.DataFrame(data)
+            df.to_csv(os.path.join(self.log_dir, 'training_logs.csv'), index=False)
+            
+        except Exception as e:
+            print(f"Error saving logs: {e}")
+            # Si falla, guardar solo los datos básicos
+            if self.losses:
+                basic_data = {'step': [step for step, _ in self.losses], 
+                             'loss': [loss for _, loss in self.losses]}
+                df = pd.DataFrame(basic_data)
+                df.to_csv(os.path.join(self.log_dir, 'basic_training_logs.csv'), index=False)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
