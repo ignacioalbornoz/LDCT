@@ -1,0 +1,147 @@
+REPORTE DE CATEGORÍAS DEL DATASET SKETCH
+==================================================
+
+Total de categorías: 125
+Total de edges: 11241
+Total de sketches: 67801
+
+TOP 10 CATEGORÍAS CON MÁS EDGES:
+----------------------------------------
+ 1. raccoon         |   90 edges |   7.3 avg sketches |  5-12 range
+ 2. apple           |   90 edges |   5.5 avg sketches |  5-10 range
+ 3. ant             |   90 edges |   5.6 avg sketches |  5-10 range
+ 4. castle          |   90 edges |   6.1 avg sketches |  5- 9 range
+ 5. butterfly       |   90 edges |   6.0 avg sketches |  5-14 range
+ 6. parrot          |   90 edges |   6.0 avg sketches |  5- 8 range
+ 7. bread           |   90 edges |   5.7 avg sketches |  5-13 range
+ 8. hotdog          |   90 edges |   6.3 avg sketches |  5-11 range
+ 9. shark           |   90 edges |   5.5 avg sketches |  5-11 range
+10. bicycle         |   90 edges |   6.1 avg sketches |  5-10 range
+
+TODAS LAS CATEGORÍAS:
+----------------------------------------
+raccoon              |   90 edges |   7.3 avg sketches |  5-12 range
+apple                |   90 edges |   5.5 avg sketches |  5-10 range
+ant                  |   90 edges |   5.6 avg sketches |  5-10 range
+castle               |   90 edges |   6.1 avg sketches |  5- 9 range
+butterfly            |   90 edges |   6.0 avg sketches |  5-14 range
+parrot               |   90 edges |   6.0 avg sketches |  5- 8 range
+bread                |   90 edges |   5.7 avg sketches |  5-13 range
+hotdog               |   90 edges |   6.3 avg sketches |  5-11 range
+shark                |   90 edges |   5.5 avg sketches |  5-11 range
+bicycle              |   90 edges |   6.1 avg sketches |  5-10 range
+volcano              |   90 edges |   5.5 avg sketches |  5-10 range
+sheep                |   90 edges |   6.7 avg sketches |  5-10 range
+pig                  |   90 edges |   6.7 avg sketches |  5-10 range
+pistol               |   90 edges |   5.6 avg sketches |  5-12 range
+rabbit               |   90 edges |   6.7 avg sketches |  5-11 range
+sailboat             |   90 edges |   6.6 avg sketches |  5-11 range
+sea_turtle           |   90 edges |   5.7 avg sketches |  5-10 range
+rhinoceros           |   90 edges |   5.6 avg sketches |  5-10 range
+saxophone            |   90 edges |   5.6 avg sketches |  5-10 range
+seagull              |   90 edges |   6.7 avg sketches |  5-10 range
+rocket               |   90 edges |   6.0 avg sketches |  5-11 range
+couch                |   90 edges |   6.5 avg sketches |  5-10 range
+dolphin              |   90 edges |   5.8 avg sketches |  5-11 range
+hammer               |   90 edges |   6.4 avg sketches |  5-10 range
+jellyfish            |   90 edges |   5.4 avg sketches |  5- 9 range
+lizard               |   90 edges |   6.3 avg sketches |  5-10 range
+cat                  |   90 edges |   6.9 avg sketches |  5-11 range
+owl                  |   90 edges |   6.5 avg sketches |  5-11 range
+knife                |   90 edges |   6.2 avg sketches |  5-11 range
+beetle               |   90 edges |   5.5 avg sketches |  5-10 range
+tank                 |   90 edges |   6.0 avg sketches |  5- 8 range
+scissors             |   90 edges |   5.6 avg sketches |  5- 9 range
+ray                  |   90 edges |   5.2 avg sketches |  5- 7 range
+ape                  |   90 edges |   6.1 avg sketches |  5- 9 range
+elephant             |   90 edges |   6.6 avg sketches |  5-11 range
+tree                 |   90 edges |   5.3 avg sketches |  5- 9 range
+bear                 |   90 edges |   7.2 avg sketches |  5-14 range
+crocodilian          |   90 edges |   6.0 avg sketches |  5-10 range
+spider               |   90 edges |   6.1 avg sketches |  5-14 range
+fish                 |   90 edges |   5.3 avg sketches |  5-10 range
+frog                 |   90 edges |   6.1 avg sketches |  5-10 range
+pineapple            |   90 edges |   6.0 avg sketches |  5-12 range
+candle               |   90 edges |   5.4 avg sketches |  5- 9 range
+zebra                |   90 edges |   6.1 avg sketches |  5-12 range
+rifle                |   90 edges |   6.2 avg sketches |  5-13 range
+harp                 |   90 edges |   5.9 avg sketches |  5-10 range
+spoon                |   90 edges |   5.4 avg sketches |  5- 7 range
+kangaroo             |   90 edges |   7.2 avg sketches |  5-12 range
+seal                 |   90 edges |   5.6 avg sketches |  5-10 range
+swan                 |   90 edges |   5.8 avg sketches |  5-10 range
+wheelchair           |   90 edges |   5.4 avg sketches |  5- 9 range
+racket               |   90 edges |   5.4 avg sketches |  5- 7 range
+skyscraper           |   90 edges |   5.4 avg sketches |  5-10 range
+scorpion             |   90 edges |   6.5 avg sketches |  5-10 range
+duck                 |   90 edges |   7.2 avg sketches |  5-12 range
+songbird             |   90 edges |   5.3 avg sketches |  5-10 range
+table                |   90 edges |   5.6 avg sketches |  5-14 range
+cup                  |   90 edges |   6.9 avg sketches |  5-15 range
+strawberry           |   90 edges |   6.0 avg sketches |  5-11 range
+pickup_truck         |   90 edges |   6.9 avg sketches |  5-11 range
+church               |   90 edges |   5.9 avg sketches |  5- 8 range
+hedgehog             |   90 edges |   6.1 avg sketches |  5-12 range
+crab                 |   90 edges |   5.5 avg sketches |  5-11 range
+deer                 |   90 edges |   5.6 avg sketches |  5-10 range
+violin               |   90 edges |   5.6 avg sketches |  5-10 range
+hat                  |   90 edges |   5.3 avg sketches |  5- 7 range
+pear                 |   90 edges |   5.7 avg sketches |  5-13 range
+piano                |   90 edges |   6.2 avg sketches |  5-15 range
+door                 |   90 edges |   5.8 avg sketches |  5-12 range
+windmill             |   90 edges |   5.9 avg sketches |  5-11 range
+lion                 |   90 edges |   6.9 avg sketches |  5-11 range
+cow                  |   90 edges |   7.3 avg sketches |  5-18 range
+banana               |   90 edges |   6.4 avg sketches |  5-10 range
+hamburger            |   90 edges |   5.3 avg sketches |  5- 8 range
+flower               |   90 edges |   5.2 avg sketches |  5- 7 range
+armor                |   90 edges |   5.7 avg sketches |  5-13 range
+fan                  |   90 edges |   5.3 avg sketches |  5- 7 range
+window               |   90 edges |   5.5 avg sketches |  5-10 range
+squirrel             |   90 edges |   7.0 avg sketches |  5-10 range
+bell                 |   90 edges |   5.8 avg sketches |  5-11 range
+car_(sedan)          |   90 edges |   6.4 avg sketches |  5-10 range
+chair                |   90 edges |   6.7 avg sketches |  5-11 range
+umbrella             |   90 edges |   5.5 avg sketches |  5-10 range
+tiger                |   90 edges |   7.4 avg sketches |  5-12 range
+axe                  |   90 edges |   6.0 avg sketches |  5-10 range
+cannon               |   90 edges |   5.4 avg sketches |  5-10 range
+teapot               |   90 edges |   6.1 avg sketches |  5-10 range
+mouse                |   90 edges |   6.6 avg sketches |  5-11 range
+wading_bird          |   90 edges |   5.2 avg sketches |  5- 9 range
+starfish             |   90 edges |   5.2 avg sketches |  5- 7 range
+giraffe              |   90 edges |   6.7 avg sketches |  5-13 range
+geyser               |   90 edges |   5.6 avg sketches |  5-10 range
+pretzel              |   90 edges |   6.5 avg sketches |  5-11 range
+sword                |   90 edges |   6.0 avg sketches |  5-10 range
+jack-o-lantern       |   90 edges |   5.2 avg sketches |  5-10 range
+hourglass            |   90 edges |   5.4 avg sketches |  5- 7 range
+hot-air_balloon      |   90 edges |   6.2 avg sketches |  5-11 range
+motorcycle           |   90 edges |   6.5 avg sketches |  5-10 range
+trumpet              |   90 edges |   5.5 avg sketches |  5- 7 range
+dog                  |   90 edges |   6.9 avg sketches |  5-13 range
+camel                |   90 edges |   6.8 avg sketches |  5-11 range
+hermit_crab          |   90 edges |   5.6 avg sketches |  5-10 range
+turtle               |   90 edges |   6.4 avg sketches |  5-11 range
+airplane             |   90 edges |   7.1 avg sketches |  5-15 range
+saw                  |   90 edges |   5.3 avg sketches |  5- 7 range
+eyeglasses           |   90 edges |   5.4 avg sketches |  5-10 range
+bee                  |   90 edges |   6.5 avg sketches |  5-14 range
+blimp                |   90 edges |   6.8 avg sketches |  5-11 range
+cabin                |   90 edges |   5.5 avg sketches |  5-10 range
+pizza                |   90 edges |   6.0 avg sketches |  5-10 range
+chicken              |   90 edges |   6.8 avg sketches |  5-11 range
+mushroom             |   90 edges |   5.2 avg sketches |  5- 9 range
+lobster              |   90 edges |   5.4 avg sketches |  5- 8 range
+bat                  |   90 edges |   6.3 avg sketches |  5-13 range
+bench                |   90 edges |   5.8 avg sketches |  5- 9 range
+horse                |   90 edges |   7.4 avg sketches |  5-12 range
+guitar               |   90 edges |   5.3 avg sketches |  5- 7 range
+snake                |   89 edges |   6.4 avg sketches |  5-10 range
+alarm_clock          |   89 edges |   5.7 avg sketches |  5- 7 range
+penguin              |   89 edges |   5.4 avg sketches |  5- 8 range
+teddy_bear           |   89 edges |   5.8 avg sketches |  5-11 range
+shoe                 |   89 edges |   5.5 avg sketches |  5- 8 range
+snail                |   89 edges |   6.4 avg sketches |  5-11 range
+wine_bottle          |   89 edges |   6.0 avg sketches |  5-10 range
+helicopter           |   88 edges |   7.5 avg sketches |  5-12 range

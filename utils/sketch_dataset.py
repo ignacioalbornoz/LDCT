@@ -1,97 +1,169 @@
 import os
+import cv2
 import torch
-from torch.utils.data import Dataset
-from PIL import Image
+import logging
+import pandas as pd
 import numpy as np
+from PIL import Image
+from torch.utils.data import Dataset
+from skimage.transform import resize
 
-class SketchPairDataset(Dataset):
-    '''
-    Dataset para pares (edge, sketch) en estructura tipo:
-    root/edges_inverted_bw/<categoria>/<nombre>.png
-    root/sketch/<categoria>/<nombre>-N.png
-    '''
-    def __init__(self, dataroot, img_size=256, norm=True, img_datatype=np.float32, transforms=None):
-        super().__init__()
-        self.dataroot = dataroot
-        self.edges_dir = os.path.join(dataroot, 'edges_inverted_bw')
-        self.sketch_dir = os.path.join(dataroot, 'sketch_bw')
-        self.img_size = (img_size, img_size) if img_size is not None else None
-        self.norm = norm
-        self.img_datatype = img_datatype
-        self.transforms = transforms
-        
-        # Crear pares de imágenes
-        self.pairs = self._make_pairs()
-        self.size = len(self.pairs)
-        assert self.size > 0, 'Empty SketchPairDataset'
-        
-        print(f"[SketchPairDataset] Cargados {len(self.pairs)} pares de imágenes")
+class SketchDataset(Dataset):
+    """
+    Dataset class for training sketch diffusion models.
+    Loads binary edge images (edges_inverted_bw) as input and sketch images (sketch_bw) as target.
+    Handles the hierarchical structure of the sketchy dataset.
+    """
     
-    def _make_pairs(self):
+    def __init__(self, base_path: str, img_size: int = 256, train: bool = True, 
+                 transforms=None, edge_dir: str = "edges_inverted_bw", 
+                 sketch_dir: str = "sketch_bw"):
+        """
+        Constructor Method
+        
+        Inputs:
+            - base_path: (String) Base directory containing edge and sketch folders
+            - img_size: (Int) Image preprocessing resize, default=256
+            - train: (Boolean) If True, uses train split, default=True
+            - transforms: (object) Data augmentation transforms
+            - edge_dir: (String) Directory name for edge images
+            - sketch_dir: (String) Directory name for sketch images
+        """
+        super(SketchDataset, self).__init__()
+        
+        self.base_path = base_path
+        self.img_size = (img_size, img_size) if img_size is not None else None
+        self.transforms = transforms
+        self.train = train
+        self.edge_dir = edge_dir
+        self.sketch_dir = sketch_dir
+        
+        # Paths to edge and sketch directories
+        self.edge_path = os.path.join(base_path, edge_dir)
+        self.sketch_path = os.path.join(base_path, sketch_dir)
+        
+        # Get list of image pairs
+        self.image_pairs = self._get_image_pairs()
+        
+        # Ensure not empty
+        assert len(self.image_pairs) > 0, 'Empty Dataset'
+        
+        # Log the dataset creation
+        logging.info(f'Creating {"Train" if train else "Test"} sketch dataset with {len(self.image_pairs)} examples.')
+    
+    def _get_image_pairs(self):
+        """Get list of image pairs that exist in both edge and sketch directories"""
         pairs = []
-        # Recorre todas las categorías
-        for category in os.listdir(self.edges_dir):
-            edge_cat_dir = os.path.join(self.edges_dir, category)
-            sketch_cat_dir = os.path.join(self.sketch_dir, category)
-            if not os.path.isdir(edge_cat_dir) or not os.path.isdir(sketch_cat_dir):
+        
+        # Get all categories from edge directory
+        if not os.path.exists(self.edge_path):
+            raise ValueError(f"Edge directory does not exist: {self.edge_path}")
+        
+        categories = [d for d in os.listdir(self.edge_path) 
+                     if os.path.isdir(os.path.join(self.edge_path, d))]
+        
+        for category in categories:
+            edge_cat_path = os.path.join(self.edge_path, category)
+            sketch_cat_path = os.path.join(self.sketch_path, category)
+            
+            # Skip if sketch category doesn't exist
+            if not os.path.exists(sketch_cat_path):
                 continue
-            # Indexa todos los sketches de la categoría
-            sketch_files = os.listdir(sketch_cat_dir)
-            for edge_file in os.listdir(edge_cat_dir):
-                edge_prefix, _ = os.path.splitext(edge_file)
-                # Busca todos los sketches que empiezan con el mismo prefijo
-                matching_sketches = [f for f in sketch_files if f.startswith(edge_prefix + '-')]
-                edge_path = os.path.join(edge_cat_dir, edge_file)
-                for sketch_file in matching_sketches:
-                    sketch_path = os.path.join(sketch_cat_dir, sketch_file)
+            
+            # Get edge files in this category
+            edge_files = [f for f in os.listdir(edge_cat_path) 
+                         if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+            
+            for edge_file in edge_files:
+                # Get base name without extension
+                base_name = os.path.splitext(edge_file)[0]
+                
+                # Find corresponding sketch files (they have suffixes like -1, -2, etc.)
+                sketch_files = [f for f in os.listdir(sketch_cat_path) 
+                              if f.startswith(base_name + '-') and f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+                
+                # Create pairs for each sketch file
+                for sketch_file in sketch_files:
                     pairs.append({
-                        'edge_path': edge_path,
-                        'sketch_path': sketch_path,
+                        'edge_path': os.path.join(edge_cat_path, edge_file),
+                        'sketch_path': os.path.join(sketch_cat_path, sketch_file),
                         'category': category,
-                        'edge_id': edge_prefix,
+                        'edge_file': edge_file,
                         'sketch_file': sketch_file
                     })
+        
         return pairs
     
     def __len__(self):
-        return self.size
-
-    def preprocess(self, img):
-        # Convierte a float32, normaliza y resizea si es necesario
-        img = np.array(img).astype(self.img_datatype)
-        if self.img_size is not None:
-            from skimage.transform import resize
-            img = resize(img, self.img_size, preserve_range=True, anti_aliasing=True)
+        return len(self.image_pairs)
+    
+    def preprocess(self, img_path, is_binary=True):
+        """
+        Preprocess image for training
         
-        # Convertir a binario (blanco/negro)
-        if self.norm:
-            # Umbral para convertir a binario
-            threshold = 128
-            img = (img > threshold).astype(np.float32)
-        else:
-            # Umbral para convertir a binario
-            threshold = 128
-            img = (img > threshold).astype(np.float32)
-        return img
-
+        Inputs:
+            - img_path: (String) Path to image file
+            - is_binary: (Boolean) Whether image should be treated as binary
+            
+        Outputs:
+            - img_tensor: (torch.Tensor) Preprocessed image tensor
+        """
+        # Load image
+        img = Image.open(img_path).convert('L')  # Convert to grayscale
+        
+        # Resize if needed
+        if self.img_size:
+            img = img.resize(self.img_size, Image.Resampling.LANCZOS)
+        
+        # Convert to numpy array
+        img_array = np.array(img, dtype=np.float32)
+        
+        # Normalize to [0, 1] range
+        if img_array.max() > 1:
+            img_array = img_array / 255.0
+        
+        # For binary images, ensure they are truly binary (0 or 1)
+        if is_binary:
+            img_array = (img_array > 0.5).astype(np.float32)
+        
+        # Convert to tensor and add channel dimension
+        img_tensor = torch.from_numpy(img_array).unsqueeze(0)  # Add channel dimension
+        
+        return img_tensor
+    
     def __getitem__(self, idx):
-        pair = self.pairs[idx]
+        """
+        Get item from dataset
         
-        # Cargar imágenes en grayscale (1 canal)
-        edge_img = Image.open(pair['edge_path']).convert('L')
-        sketch_img = Image.open(pair['sketch_path']).convert('L')
+        Inputs:
+            - idx: (Int) Index of item to retrieve
+            
+        Outputs:
+            - target: (dict) Dictionary containing:
+                - image: (torch.Tensor) Edge image (input)
+                - target: (torch.Tensor) Sketch image (target)
+                - img_id: (String) Image filename
+                - img_path: (String) Image path
+        """
+        pair = self.image_pairs[idx]
         
-        edge = self.preprocess(edge_img)
-        sketch = self.preprocess(sketch_img)
+        # Load edge image (input)
+        edge_img = self.preprocess(pair['edge_path'], is_binary=True)
         
-        # Convertir a tensores [C, H, W] para grayscale
-        edge = torch.as_tensor(edge).float().unsqueeze(0)  # [1, H, W]
-        sketch = torch.as_tensor(sketch).float().unsqueeze(0)  # [1, H, W]
+        # Load sketch image (target)
+        sketch_img = self.preprocess(pair['sketch_path'], is_binary=True)
         
+        # Apply transforms if available
         if self.transforms is not None:
-            edge, sketch = self.transforms(edge, sketch)
+            edge_img, sketch_img = self.transforms(edge_img, sketch_img)
         
-        return {
-            'SR': edge,      # condición (edge) - 3 canales
-            'HR': sketch     # objetivo (sketch) - 3 canales
-        } 
+        # Create target dictionary
+        target = {
+            'image': edge_img,      # Input: edge image
+            'target': sketch_img,   # Target: sketch image
+            'img_id': f"{pair['category']}_{pair['edge_file']}_{pair['sketch_file']}",
+            'img_path': pair['sketch_path'],
+            'img_size': self.img_size
+        }
+        
+        return target 
